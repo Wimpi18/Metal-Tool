@@ -1,5 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
 
 def enviar_datos():
     try:
@@ -10,12 +12,12 @@ def enviar_datos():
         peralte = float(entry_peralte.get())
         
         # Validaciones
-        if alto < 3 or alto > 18:
-            raise ValueError("El alto debe estar entre 3 y 18 metros.")
+        if alto < 3 or alto > 12:
+            raise ValueError("El alto debe estar entre 3 y 12 metros.")
         if ancho < 6 or ancho > 50:
             raise ValueError("El ancho debe estar entre 6 y 50 metros.")
-        if largo < 6 or largo > 100 or largo % 6 != 0:
-            raise ValueError("El largo debe estar entre 6 y 100 metros, y ser múltiplo de 6.")
+        if largo <= 0 or largo > 100 or largo % 6 != 0 or largo < ancho:
+            raise ValueError("El largo debe estar entre 0 y 100 metros, ser múltiplo de 6 y mayor que el ancho.")
         if peralte <= alto or peralte > alto + 5:
             raise ValueError("El peralte debe ser mayor que el alto y no exceder en más de 5 metros al alto.")
         
@@ -23,9 +25,61 @@ def enviar_datos():
         messagebox.showinfo("Datos enviados", f"Datos ingresados correctamente:\n"
                                               f"Alto: {alto} m\nAncho: {ancho} m\n"
                                               f"Largo: {largo} m\nPeralte: {peralte} m")
+        
+        # Graficar la estructura del galpón
+        graficar_estructura_galpon(alto, ancho, largo, peralte)
+
     except ValueError as e:
         # Mostrar mensaje de error
         messagebox.showerror("Error", f"Entrada inválida: {e}")
+
+def graficar_estructura_galpon(alto, ancho, largo, peralte):
+    # Crear un gráfico 3D
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    
+    # Parámetros del diseño
+    distancia_pilares = 6  # Distancia entre pilares en metros
+    num_pilares = int(largo / distancia_pilares) + 1
+    
+    # Dibujar los pilares (esquinas de cada marco)
+    for i in range(num_pilares):
+        x = i * distancia_pilares
+        # Pilares delanteros y traseros
+        ax.plot([x, x], [0, 0], [0, alto], color='brown', linewidth=2)  # Pilar frontal
+        ax.plot([x, x], [ancho, ancho], [0, alto], color='brown', linewidth=2)  # Pilar trasero
+    
+    # Dibujar las vigas superiores (unión de pilares)
+    for i in range(num_pilares - 1):
+        x1 = i * distancia_pilares
+        x2 = (i + 1) * distancia_pilares
+        # Vigas horizontales superiores
+        ax.plot([x1, x2], [0, 0], [alto, alto], color='gray', linewidth=2)
+        ax.plot([x1, x2], [ancho, ancho], [alto, alto], color='gray', linewidth=2)
+    
+    # Dibujar las costaneras (vigas diagonales del techo)
+    for i in range(num_pilares - 1):
+        x1 = i * distancia_pilares
+        x2 = (i + 1) * distancia_pilares
+        ax.plot([x1, x2], [0, ancho / 2], [alto, peralte], color='blue', linewidth=1.5)  # Frontal
+        ax.plot([x1, x2], [ancho, ancho / 2], [alto, peralte], color='blue', linewidth=1.5)  # Trasera
+    
+    # Picos del techo (costaneras centrales)
+    for i in range(num_pilares):
+        x = i * distancia_pilares
+        ax.plot([x, x], [0, ancho], [alto, alto], color='green', linestyle='--', linewidth=1.5)
+        ax.plot([x, x], [ancho / 2, ancho / 2], [alto, peralte], color='green', linewidth=2)
+    
+    # Configurar los límites del gráfico
+    ax.set_xlabel('Largo (m)')
+    ax.set_ylabel('Ancho (m)')
+    ax.set_zlabel('Altura (m)')
+    ax.set_xlim([0, largo])
+    ax.set_ylim([0, ancho])
+    ax.set_zlim([0, peralte])
+
+    # Mostrar el gráfico
+    plt.show()
 
 # Crear la ventana principal
 ventana = tk.Tk()
