@@ -68,11 +68,15 @@ def graficar_estructura_galpon(alto, ancho, largo, peralte):
         ax.plot([x, x], [0, ancho / 2], [alto, peralte], color='blue', linewidth=1.5)  # Frontal
         ax.plot([x, x], [ancho, ancho / 2], [alto, peralte], color='blue', linewidth=1.5)  # Trasera
     
-    # Picos del techo (peralte)
+    # Dibujar las cerchas (peralte)
     for i in range(num_pilares):
         x = i * distancia_pilares
-        ax.plot([x, x], [0, ancho], [alto, alto], color='green', linestyle='--', linewidth=1.5)
-        ax.plot([x, x], [ancho / 2, ancho / 2], [alto, peralte], color='green', linestyle='--', linewidth=1.5)
+        ax.plot([x, x], [0, ancho], [alto, alto], color='green', linewidth=1.5)
+        ax.plot([x, x], [ancho / 2, ancho / 2], [alto, peralte], color='green', linewidth=1.5)
+        ax.plot([x, x], [ancho / 4, ancho / 4], [alto, alto+(peralte - alto)/2], color='green', linewidth=1.5)
+        ax.plot([x, x], [ancho - ancho / 4, ancho - ancho / 4], [alto, alto+(peralte - alto)/2], color='green', linewidth=1.5)
+        ax.plot([x, x], [ancho / 4, ancho / 2], [alto+(peralte - alto)/2, alto], color='green', linewidth=1.5)
+        ax.plot([x, x], [ancho / 2, ancho - ancho / 4], [alto, alto+(peralte - alto)/2], color='green', linewidth=1.5)
     
     # Configurar los límites del gráfico
     ax.set_xlabel('Largo (m)')
