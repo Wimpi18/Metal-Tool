@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from math import sqrt
 
 def graficar_estructura_galpon(datos, graficos):
-    alto, ancho, largo, peralte = datos.values()
+    alto, ancho, largo, peralte, longitudBase = datos.values()
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')

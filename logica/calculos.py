@@ -37,7 +37,7 @@ def calcular_resultados(datos):
 
     return resultados, {"num_pilares": num_pilares, "num_costaneras": num_costaneras}
 
-def calcular_costos_totales(resultados, costos):
+def calcular_costos_totales(resultados, costos, longitud_base):
     costos_totales = []
     costoPerfilHeb400 = float(resultados[0].split(':')[1].strip()) * float(resultados[1].split(':')[1].strip().split(' ')[0]) * costos['mh4']
     costoPerfilC = float(resultados[3].split(':')[1].strip()) * float(resultados[4].split(':')[1].strip().split(' ')[0]) * costos['mc']
@@ -56,7 +56,6 @@ def calcular_costos_totales(resultados, costos):
     longitudes = [float(resultados[8].split(':')[1].strip().split(' ')[0]), float(resultados[11].split(':')[1].strip().split(' ')[0]),
                   float(resultados[14].split(':')[1].strip().split(' ')[0]), float(resultados[17].split(':')[1].strip().split(' ')[0]),
                   float(resultados[20].split(':')[1].strip().split(' ')[0])]  # Longitudes requeridas en metros
-    longitud_base = 15.0  # Longitud base de las barras en metros
     costo_por_metro = costos['mh3'] # Costo por metro de la barra
 
     barras_usadas, cortes, costo_total = simulacion_de_cortes(cantidades, longitudes, longitud_base, costo_por_metro)

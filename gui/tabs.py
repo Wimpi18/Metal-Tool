@@ -34,7 +34,8 @@ def configurar_tab_ingreso(tab, notebook, tab_resultados, costos_actuales):
                 "alto": float(entry_alto.get()),
                 "ancho": float(entry_ancho.get()),
                 "largo": float(entry_largo.get()),
-                "peralte": float(entry_peralte.get())
+                "peralte": float(entry_peralte.get()),
+                "longitudBase": float(entry_longitudBase.get())
             }
 
             # Validar datos
@@ -44,7 +45,7 @@ def configurar_tab_ingreso(tab, notebook, tab_resultados, costos_actuales):
             resultados, graficos = calcular_resultados(datos)
 
             # Calcular costos totales
-            costos = calcular_costos_totales(resultados, costos_actuales)
+            costos = calcular_costos_totales(resultados, costos_actuales, datos["longitudBase"])
             resultados.extend(costos)
 
             # Graficar estructura
@@ -72,9 +73,13 @@ def configurar_tab_ingreso(tab, notebook, tab_resultados, costos_actuales):
     tk.Label(tab, text="Peralte (m):").grid(row=3, column=0, padx=10, pady=10, sticky="e")
     entry_peralte = tk.Entry(tab)
     entry_peralte.grid(row=3, column=1, padx=10, pady=10)
+    
+    tk.Label(tab, text="Longitud base de perfil HEB300 (m):").grid(row=4, column=0, padx=10, pady=10, sticky="e")
+    entry_longitudBase = tk.Entry(tab)
+    entry_longitudBase.grid(row=4, column=1, padx=10, pady=10)
 
     btn_enviar = tk.Button(tab, text="Enviar", command=enviar_datos)
-    btn_enviar.grid(row=4, column=0, columnspan=2, pady=20)
+    btn_enviar.grid(row=5, column=0, columnspan=2, pady=20)
 
 def configurar_tab_costos(tab, costos_actuales):
     entradas_costos = {}
