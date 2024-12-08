@@ -1,20 +1,32 @@
 import tkinter as tk
-from tkinter import ttk
-from tkinter import messagebox
+from tkinter import ttk, messagebox
 from logica.validaciones import validar_datos
-from logica.calculos import calcular_resultados
+from logica.calculos import calcular_resultados, calcular_costos_totales
 from logica.graficos import graficar_estructura_galpon
+
+# Valores predeterminados de costos unitarios
+COSTOS_POR_DEFECTO = {
+    "mh4": 13910.20,  # Costo unitario de perfil HEB 400 ($/m)
+    "mh3": 9836.69,  # Costo unitario de perfil HEB 300 ($/m)
+    "mc": 933.67,    # Costo unitario de perfil C ($/m)
+    "ma": 2815.44     # Costo unitario de pernos de anclaje ($/unidad)
+}
 
 def configurar_tabs(notebook):
     tab1 = ttk.Frame(notebook)
     tab2 = ttk.Frame(notebook)
+    tab3 = ttk.Frame(notebook)
 
     notebook.add(tab1, text="Ingresar Datos")
+    notebook.add(tab3, text="Configurar Costos")
     notebook.add(tab2, text="Resultados")
 
-    configurar_tab_ingreso(tab1, notebook, tab2)
+    costos_actuales = COSTOS_POR_DEFECTO.copy()
 
-def configurar_tab_ingreso(tab, notebook, tab_resultados):
+    configurar_tab_ingreso(tab1, notebook, tab2, costos_actuales)
+    configurar_tab_costos(tab3, costos_actuales)
+
+def configurar_tab_ingreso(tab, notebook, tab_resultados, costos_actuales):
     def enviar_datos():
         try:
             # Capturar los datos ingresados
@@ -31,13 +43,17 @@ def configurar_tab_ingreso(tab, notebook, tab_resultados):
             # Calcular resultados
             resultados, graficos = calcular_resultados(datos)
 
+            # Calcular costos totales
+            costos = calcular_costos_totales(resultados, costos_actuales)
+            resultados.extend(costos)
+
             # Graficar estructura
             graficar_estructura_galpon(datos, graficos)
 
             # Mostrar resultados
             mostrar_resultados(tab_resultados, resultados)
 
-            notebook.select(1)
+            notebook.select(2)
         except ValueError as e:
             messagebox.showerror("Error", f"Entrada inválida: {e}")
 
@@ -59,6 +75,41 @@ def configurar_tab_ingreso(tab, notebook, tab_resultados):
 
     btn_enviar = tk.Button(tab, text="Enviar", command=enviar_datos)
     btn_enviar.grid(row=4, column=0, columnspan=2, pady=20)
+
+def configurar_tab_costos(tab, costos_actuales):
+    entradas_costos = {}
+
+    def actualizar_costos():
+        for clave, entrada in entradas_costos.items():
+            try:
+                costos_actuales[clave] = float(entrada.get())
+            except ValueError:
+                messagebox.showerror("Error", f"El costo de {clave} no es válido.")
+                return
+        messagebox.showinfo("Éxito", "Costos actualizados correctamente.")
+
+    def restablecer_costos():
+        for clave, valor in COSTOS_POR_DEFECTO.items():
+            costos_actuales[clave] = valor
+            entradas_costos[clave].delete(0, tk.END)
+            entradas_costos[clave].insert(0, f"{valor:.2f}")
+        messagebox.showinfo("Éxito", "Costos restablecidos a los valores predeterminados.")
+
+    tk.Label(tab, text="Configurar Costos Unitarios ($):", font=("Arial", 14, "bold")).pack(pady=10)
+    frame_costos = ttk.Frame(tab)
+    frame_costos.pack(pady=10)
+
+    row = 0
+    for clave, valor in COSTOS_POR_DEFECTO.items():
+        tk.Label(frame_costos, text=f"{clave}:").grid(row=row, column=0, padx=10, pady=5, sticky="e")
+        entrada = tk.Entry(frame_costos)
+        entrada.grid(row=row, column=1, padx=10, pady=5)
+        entrada.insert(0, f"{valor:.2f}")
+        entradas_costos[clave] = entrada
+        row += 1
+
+    tk.Button(tab, text="Actualizar Costos", command=actualizar_costos).pack(pady=10)
+    tk.Button(tab, text="Restablecer Valores Predeterminados", command=restablecer_costos).pack(pady=10)
 
 def mostrar_resultados(tab, resultados):
     # Limpiar el contenido del tab
@@ -87,4 +138,3 @@ def mostrar_resultados(tab, resultados):
     # Mostrar cada resultado en una etiqueta
     for linea in resultados:
         tk.Label(scrollable_frame, text=linea, font=("Arial", 12), anchor="w", justify="left").pack(fill='x', padx=5)
-
