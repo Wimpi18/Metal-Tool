@@ -1,5 +1,6 @@
 from math import sqrt
 from pulp import LpProblem, LpMinimize, LpVariable, lpSum, value
+from itertools import combinations_with_replacement
 
 def calcular_resultados(datos):
     alto = datos["alto"]
@@ -58,7 +59,7 @@ def calcular_costos_totales(resultados, costos, longitud_base):
                   float(resultados[20].split(':')[1].strip().split(' ')[0])]  # Longitudes requeridas en metros
     costo_por_metro = costos['mh3'] # Costo por metro de la barra
 
-    barras_usadas, cortes, costo_total = simulacion_de_cortes(cantidades, longitudes, longitud_base, costo_por_metro)
+    barras_usadas, combinaciones, costo_total = simulacion_de_cortes(cantidades, longitudes, longitud_base, costo_por_metro)
     
     costos_totales.append(" ")
     costos_totales.append("Costo galpón:")
@@ -70,48 +71,63 @@ def calcular_costos_totales(resultados, costos, longitud_base):
     costos_totales.append(f"Cantidad de barras utilizadas: {barras_usadas}")
     
     desperdicio = barras_usadas * longitud_base
-    costos_totales.append("Cortes realizados:")
-    for longitud, cantidad in cortes.items():
-        costos_totales.append(f"  {cantidad} cortes de longitud {longitud} m")
-        desperdicio -= cantidad * longitud
+    costos_totales.append("")
+    costos_totales.append("Combinaciones de cortes:")
+    for patron, cantidad in combinaciones.items():
+        costos_totales.append(f"  Patrón {patron}: {cantidad} barras")
     costos_totales.append(f"Desperdicio perfil HEB300: {desperdicio:.2f} m")
     costos_totales.append(f"Costo total cerchas con perfil HEB300: {costo_total:.2f} $")
     return costos_totales
 
+def generar_patrones(longitudes, longitud_base):
+    """
+    Genera todos los patrones posibles de cortes dentro de la longitud base.
+    :param longitudes: Lista de longitudes requeridas.
+    :param longitud_base: Longitud base de la barra.
+    :return: Lista de patrones de corte.
+    """
+    patrones = []
+    for r in range(1, len(longitudes) + 1):
+        for comb in combinations_with_replacement(longitudes, r):
+            if sum(comb) <= longitud_base:
+                patrones.append(comb)
+    return patrones
+
 def simulacion_de_cortes(cantidades, longitudes, longitud_base, costo_por_metro):
     """
     Simula los cortes necesarios para cumplir con las órdenes de perfiles HEB300, minimizando el desperdicio.
-    
     :param cantidades: Lista de cantidades requeridas por cada longitud.
     :param longitudes: Lista de longitudes requeridas (en metros).
     :param longitud_base: Longitud base de la barra (en metros).
     :param costo_por_metro: Costo por metro de la barra.
+    :return: Tupla (barras_usadas, combinaciones_cortes, costo_total)
     """
+    # Generar todos los patrones viables de cortes
+    patrones = generar_patrones(longitudes, longitud_base)
+    num_patrones = len(patrones)
+
+    # Crear el problema de optimización
     prob = LpProblem("Cutting Stock Problem", LpMinimize)
 
-    # Número de tipos de longitudes requeridas
-    I = len(longitudes)
-
-    # Variables de decisión: número de barras utilizadas y el número de cortes por barra
-    y = LpVariable("NumeroDeBarras", cat="Integer", lowBound=0)
-    x = LpVariable.dicts("Cortes", list(range(I)), cat="Integer", lowBound=0)
+    # Variables de decisión: cuántas barras usan cada patrón
+    x = LpVariable.dicts("Patron", list(range(num_patrones)), cat="Integer", lowBound=0)
 
     # Función objetivo: minimizar el costo total
-    prob += y * longitud_base * costo_por_metro, "CostoTotal"
+    prob += lpSum(x[p] for p in range(num_patrones)) * costo_por_metro * longitud_base, "CostoTotal"
 
-    # Restricción 1: Satisfacer la demanda de cada longitud requerida
-    for i in range(I):
-        prob += x[i] >= cantidades[i], f"Demanda_{i}"
-
-    # Restricción 2: Longitud total de cortes por barra no puede exceder la longitud base
-    prob += lpSum(x[i] * longitudes[i] for i in range(I)) <= y * longitud_base, "RestriccionDeLongitud"
+    # Restricción: satisfacer la demanda de cada longitud
+    for i, longitud in enumerate(longitudes):
+        prob += (
+            lpSum(x[p] * patrones[p].count(longitud) for p in range(num_patrones)) >= cantidades[i],
+            f"Demanda_{longitud}",
+        )
 
     # Resolver el problema
     prob.solve()
 
-    # Imprimir resultados
-    barras_usadas = value(y)
-    cortes = {longitudes[i]: value(x[i]) for i in range(I)}
+    # Resultados
+    barras_usadas = sum(value(x[p]) for p in range(num_patrones))
+    combinaciones_cortes = {tuple(patrones[p]): int(value(x[p])) for p in range(num_patrones) if value(x[p]) > 0}
     costo_total = value(prob.objective)
 
-    return barras_usadas, cortes, costo_total
+    return barras_usadas, combinaciones_cortes, costo_total
