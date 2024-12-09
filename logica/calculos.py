@@ -20,20 +20,20 @@ def calcular_resultados(datos):
         f"Longitud de costaneras C: {distancia_pilares:.2f} m",
         "",
         "Para cerchas:",
-        f"  Cantidad de vigas HEB300: {num_vigas}",
-        f"  Longitud de vigas HEB300: {sqrt((peralte-alto)**2 + (ancho/2)**2):.2f} m",
+        f"      Cantidad de vigas HEB300: {num_vigas}",
+        f"      Longitud de vigas HEB300: {sqrt((peralte-alto)**2 + (ancho/2)**2):.2f} m",
         "",
-        f"  Cantidad de tirantes HEB300: {num_vigas / 2}",
-        f"  Longitud de tirantes HEB300: {ancho:.2f} m",
+        f"      Cantidad de tirantes HEB300: {num_vigas / 2}",
+        f"      Longitud de tirantes HEB300: {ancho:.2f} m",
         "",
-        f"  Cantidad de pendolones HEB300: {num_vigas / 2}",
-        f"  Longitud de pendolones HEB300: {peralte-alto:.2f} m",
+        f"      Cantidad de pendolones HEB300: {num_vigas / 2}",
+        f"      Longitud de pendolones HEB300: {peralte-alto:.2f} m",
         "",
-        f"  Cantidad de montantes HEB300: {num_vigas}",
-        f"  Longitud de montantes HEB300: {(peralte-alto)/2:.2f} m",
+        f"      Cantidad de montantes HEB300: {num_vigas}",
+        f"      Longitud de montantes HEB300: {(peralte-alto)/2:.2f} m",
         "",
-        f"  Cantidad de tornapuntas HEB300: {num_vigas}",
-        f"  Longitud de tornapuntas HEB300: {sqrt(((peralte-alto)/2)**2 + (ancho/4)**2):.2f} m"
+        f"      Cantidad de tornapuntas HEB300: {num_vigas}",
+        f"      Longitud de tornapuntas HEB300: {sqrt(((peralte-alto)/2)**2 + (ancho/4)**2):.2f} m"
     ]
 
     return resultados, {"num_pilares": num_pilares, "num_costaneras": num_costaneras}
@@ -59,24 +59,25 @@ def calcular_costos_totales(resultados, costos, longitud_base):
                   float(resultados[20].split(':')[1].strip().split(' ')[0])]  # Longitudes requeridas en metros
     costo_por_metro = costos['mh3'] # Costo por metro de la barra
 
-    barras_usadas, combinaciones, costo_total = simulacion_de_cortes(cantidades, longitudes, longitud_base, costo_por_metro)
+    barras_usadas, combinaciones, costo_total, desperdicio_total = simulacion_de_cortes(cantidades, longitudes, longitud_base, costo_por_metro)
     
     costos_totales.append(" ")
-    costos_totales.append("Costo galpón:")
-    costos_totales.append(f"Costo total pilares con perfil HEB400: {costoPerfilHeb400:.2f} $")
-    costos_totales.append(f"Costo total costaneras con perfil C: {costoPerfilC:.2f} $")
-    costos_totales.append(f"Costo total pernos de anclaje: {costoPernosAnclaje:.2f} $")
-
-    costos_totales.append("Simulación de cortes:")
-    costos_totales.append(f"Cantidad de barras utilizadas: {barras_usadas}")
+    costos_totales.append(f"Costo galpón: {costoPerfilHeb400 + costoPerfilC + costoPernosAnclaje + costo_total:.2f} $")
+    costos_totales.append(f"    Costo total pilares con perfil HEB400: {costoPerfilHeb400:.2f} $")
+    costos_totales.append(f"    Costo total costaneras con perfil C: {costoPerfilC:.2f} $")
+    costos_totales.append(f"    Costo total pernos de anclaje: {costoPernosAnclaje:.2f} $")
+    costos_totales.append(f"    Costo total cerchas con perfil HEB300: {costo_total:.2f} $")
     
-    desperdicio = barras_usadas * longitud_base
+    costos_totales.append(" ")
+    costos_totales.append("Simulación de cortes:")
+    costos_totales.append(f"    Cantidad de barras utilizadas: {barras_usadas}")
     costos_totales.append("")
-    costos_totales.append("Combinaciones de cortes:")
+    costos_totales.append(f"    Combinaciones de cortes:")
     for patron, cantidad in combinaciones.items():
-        costos_totales.append(f"  Patrón {patron}: {cantidad} barras")
-    costos_totales.append(f"Desperdicio perfil HEB300: {desperdicio:.2f} m")
-    costos_totales.append(f"Costo total cerchas con perfil HEB300: {costo_total:.2f} $")
+        costos_totales.append(f"            Patrón {patron}: {cantidad} barras")
+    costos_totales.append("")
+    costos_totales.append(f"    Desperdicio perfil HEB300: {desperdicio_total:.2f} m")
+    
     return costos_totales
 
 def generar_patrones(longitudes, longitud_base):
@@ -96,11 +97,6 @@ def generar_patrones(longitudes, longitud_base):
 def simulacion_de_cortes(cantidades, longitudes, longitud_base, costo_por_metro):
     """
     Simula los cortes necesarios para cumplir con las órdenes de perfiles HEB300, minimizando el desperdicio.
-    :param cantidades: Lista de cantidades requeridas por cada longitud.
-    :param longitudes: Lista de longitudes requeridas (en metros).
-    :param longitud_base: Longitud base de la barra (en metros).
-    :param costo_por_metro: Costo por metro de la barra.
-    :return: Tupla (barras_usadas, combinaciones_cortes, costo_total)
     """
     # Generar todos los patrones viables de cortes
     patrones = generar_patrones(longitudes, longitud_base)
@@ -130,4 +126,10 @@ def simulacion_de_cortes(cantidades, longitudes, longitud_base, costo_por_metro)
     combinaciones_cortes = {tuple(patrones[p]): int(value(x[p])) for p in range(num_patrones) if value(x[p]) > 0}
     costo_total = value(prob.objective)
 
-    return barras_usadas, combinaciones_cortes, costo_total
+    # Cálculo del desperdicio total
+    desperdicio_total = sum(
+        (longitud_base - sum(patron)) * cantidad
+        for patron, cantidad in combinaciones_cortes.items()
+    )
+
+    return barras_usadas, combinaciones_cortes, costo_total, desperdicio_total
