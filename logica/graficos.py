@@ -55,4 +55,4 @@ def graficar_estructura_galpon(datos, graficos):
     ax.set_ylim([-2, ancho+2])
     ax.set_zlim([0, peralte])
 
-    plt.show()
+    plt.show(block = False)

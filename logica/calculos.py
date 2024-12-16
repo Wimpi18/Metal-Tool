@@ -62,11 +62,11 @@ def calcular_costos_totales(resultados, costos, longitud_base):
     barras_usadas, combinaciones, costo_total, desperdicio_total = simulacion_de_cortes(cantidades, longitudes, longitud_base, costo_por_metro)
     
     costos_totales.append(" ")
-    costos_totales.append(f"Costo galpón: {costoPerfilHeb400 + costoPerfilC + costoPernosAnclaje + costo_total:.2f} $")
     costos_totales.append(f"    Costo total pilares con perfil HEB400: {costoPerfilHeb400:.2f} $")
     costos_totales.append(f"    Costo total costaneras con perfil C: {costoPerfilC:.2f} $")
     costos_totales.append(f"    Costo total pernos de anclaje: {costoPernosAnclaje:.2f} $")
     costos_totales.append(f"    Costo total cerchas con perfil HEB300: {costo_total:.2f} $")
+    costos_totales.append(f"Costo galpón: {costoPerfilHeb400 + costoPerfilC + costoPernosAnclaje + costo_total:.2f} $")
     
     costos_totales.append(" ")
     costos_totales.append("Simulación de cortes:")

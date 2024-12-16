@@ -3,6 +3,11 @@ from tkinter import ttk, messagebox
 from logica.validaciones import validar_datos
 from logica.calculos import calcular_resultados, calcular_costos_totales
 from logica.graficos import graficar_estructura_galpon
+import tkinter as tk
+from tkinter import ttk
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import ast
 
 # Valores predeterminados de costos unitarios
 COSTOS_POR_DEFECTO = {
@@ -52,7 +57,7 @@ def configurar_tab_ingreso(tab, notebook, tab_resultados, costos_actuales):
             graficar_estructura_galpon(datos, graficos)
 
             # Mostrar resultados
-            mostrar_resultados(tab_resultados, resultados)
+            mostrar_resultados(tab_resultados, resultados, datos["longitudBase"])
 
             notebook.select(2)
         except ValueError as e:
@@ -116,30 +121,127 @@ def configurar_tab_costos(tab, costos_actuales):
     tk.Button(tab, text="Actualizar Costos", command=actualizar_costos).pack(pady=10)
     tk.Button(tab, text="Restablecer Valores Predeterminados", command=restablecer_costos).pack(pady=10)
 
-def mostrar_resultados(tab, resultados):
+def mostrar_resultados(tab, resultados, longitudBase):
+
     # Limpiar el contenido del tab
     for widget in tab.winfo_children():
         widget.destroy()
-
     # Crear un marco de desplazamiento
     canvas = tk.Canvas(tab)
     scrollbar = tk.Scrollbar(tab, orient="vertical", command=canvas.yview)
     scrollable_frame = tk.Frame(canvas)
-
     scrollable_frame.bind(
         "<Configure>",
         lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
     )
-
     canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
     canvas.configure(yscrollcommand=scrollbar.set)
-
     canvas.pack(side="left", fill="both", expand=True)
     scrollbar.pack(side="right", fill="y")
-
     # Título para los resultados
     tk.Label(scrollable_frame, text="Resultados:", font=("Arial", 14, "bold")).pack(pady=(0, 10))
+    # Crear un contenedor para tablas
+    table_frame = tk.Frame(scrollable_frame)
+    table_frame.pack(fill="both", expand=True)
+    # Tablas anteriores (Pilares, Cerchas y Costos)
+    ttk.Label(table_frame, text="Detalles de pilares y costaneras", font=("Arial", 12, "bold")).pack(pady=(10, 5))
+    tree_pilares = ttk.Treeview(table_frame, columns=("Elemento", "Cantidad", "Longitud"), show="headings")
+    tree_pilares.pack(fill="x", padx=10, pady=5)
+    tree_pilares.heading("Elemento", text="Elemento")
+    tree_pilares.heading("Cantidad", text="Cantidad")
+    tree_pilares.heading("Longitud", text="Longitud (m)")
+    tree_pilares.insert("", "end", values=("Pilares HEB400", extraerDato(resultados[0]), extraerDato(resultados[1])))
+    tree_pilares.insert("", "end", values=("Costaneras C", extraerDato(resultados[3]), extraerDato(resultados[4])))
+    ttk.Label(table_frame, text="Detalles de cerchas", font=("Arial", 12, "bold")).pack(pady=(10, 5))
+    tree_cerchas = ttk.Treeview(table_frame, columns=("Elemento", "Cantidad", "Longitud"), show="headings")
+    tree_cerchas.pack(fill="x", padx=10, pady=5)
+    cerchas_datos = [
+        ("Vigas HEB300", extraerDato(resultados[7]), extraerDato(resultados[8])),
+        ("Tirantes HEB300", extraerDato(resultados[10]), extraerDato(resultados[11])),
+        ("Pendolones HEB300", extraerDato(resultados[13]), extraerDato(resultados[14])),
+        ("Montantes HEB300", extraerDato(resultados[16]), extraerDato(resultados[17])),
+        ("Tornapuntas HEB300", extraerDato(resultados[19]), extraerDato(resultados[20]))
+    ]
+    for dato in cerchas_datos:
+        tree_cerchas.insert("", "end", values=dato)
+    ttk.Label(table_frame, text="Costos", font=("Arial", 12, "bold")).pack(pady=(10, 5))
+    tree_costos = ttk.Treeview(table_frame, columns=("Descripción", "Costo ($)"), show="headings")
+    tree_costos.pack(fill="x", padx=10, pady=5)
+    costos_datos = [
+        ("Pilares HEB400", extraerDato(resultados[22])),
+        ("Costaneras C", extraerDato(resultados[23])),
+        ("Pernos de anclaje", extraerDato(resultados[24])),
+        ("Cerchas HEB300", extraerDato(resultados[25])),
+        ("Costo total galpón", extraerDato(resultados[26]))
+    ]
+    for dato in costos_datos:
+        tree_costos.insert("", "end", values=dato)
+    # Tabla para simulación de cortes
+    ttk.Label(table_frame, text="Simulación de cortes", font=("Arial", 12, "bold")).pack(pady=(10, 5))
+    tree_cortes = ttk.Treeview(table_frame, columns=("Descripción", "Cantidad"), show="headings")
+    tree_cortes.pack(fill="x", padx=10, pady=5)
+    cortes_datos = [
+        ("Barras utilizadas", extraerDato(resultados[29]))
+    ]
+    for i in range(32, len(resultados)):
+        if i == len(resultados) - 2:
+            continue
+        cortes_datos.append((extraerLlave(resultados[i]), extraerDato(resultados[i])))
 
-    # Mostrar cada resultado en una etiqueta
-    for linea in resultados:
-        tk.Label(scrollable_frame, text=linea, font=("Arial", 12), anchor="w", justify="left").pack(fill='x', padx=5)
+    for dato in cortes_datos:
+        tree_cortes.insert("", "end", values=dato)
+    # Gráfico de simulación de cortes
+    ttk.Label(table_frame, text="Visualización de Simulación de Cortes", font=("Arial", 12, "bold")).pack(pady=(10, 5))
+    marco_grafico = tk.Frame(table_frame)
+    marco_grafico.pack(pady=10)
+    # Datos del gráfico
+    combinaciones = extraerCombinaciones(resultados)
+    longitud_base = longitudBase  # Longitud base de la barra
+    # Crear la figura
+    fig = Figure(figsize=(8, len(combinaciones) * 2))
+    ax = fig.add_subplot(111)
+    y_labels = []
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd']
+    for idx, combinacion in enumerate(reversed(combinaciones)):
+        patron = combinacion["patrón"]
+        barras = combinacion["barras"]
+        y_labels.append(f"Patrón {idx + 1}: {barras} barras")
+        start = 0
+        for segment_idx, longitud in enumerate(patron):
+            ax.barh(idx, longitud, left=start, color=colors[segment_idx % len(colors)], edgecolor='black')
+            start += longitud
+        desperdicio = longitud_base - sum(patron)
+        ax.barh(idx, desperdicio, left=start, color='gray', edgecolor='black')
+    ax.set_yticks(range(len(combinaciones)))
+    ax.set_yticklabels(y_labels)
+    ax.set_xlabel("Longitud (m)")
+    ax.set_title("Simulación de Cortes")
+    # Incrustar la gráfica en Tkinter
+    canvas_grafico = FigureCanvasTkAgg(fig, master=marco_grafico)
+    canvas_grafico.draw()
+    canvas_grafico.get_tk_widget().pack()
+
+def extraerLlave(resultado:str):
+    return resultado.split(':')[0].strip()
+
+def extraerDato(resultado:str):
+    return resultado.split(':')[1].strip()
+
+def extraerCombinaciones(resultados):
+    combinaciones = []
+    
+    for i in range(32, len(resultados) - 2):
+        # Obtener los patrones
+        patronPt1 = extraerLlave(resultados[i]).split(" ")[0].lower()
+        patronPt2 = extraerLlave(resultados[i])[7:]
+        # Convertir patronPt2 a lista
+        patronPt2 = list(ast.literal_eval(patronPt2))
+        
+        # Obtener las barras
+        barrasPt1 = int(extraerDato(resultados[i]).split(" ")[0]) 
+        barrasPt2 = extraerDato(resultados[i]).split(" ")[1].lower() 
+
+        
+        combinaciones.append({patronPt1: patronPt2, barrasPt2: barrasPt1})
+    
+    return combinaciones
