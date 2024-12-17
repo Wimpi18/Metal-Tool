@@ -1,16 +1,15 @@
-from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
-from math import sqrt
+from math import sqrt, ceil
 
 def graficar_estructura_galpon(datos, graficos):
-    alto, ancho, largo, peralte, longitudBase = datos.values()
+    alto, ancho, largo, peralte, longitudesBase = datos.values()
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
     # Parámetros del diseño
-    distancia_pilares = 6
-    num_pilares = num_vigas = int(largo / distancia_pilares) + 1
+    distancia_pilares = (largo) / (ceil(2 * largo / 3) - 1)
+    num_pilares = num_vigas = (ceil(largo / distancia_pilares) + 1)
     num_costaneras = round(((5*sqrt(26))/39) * sqrt((peralte-alto)**2 + (ancho/2)**2))
     
     # Dibujar los pilares (esquinas de cada marco)
@@ -47,6 +46,16 @@ def graficar_estructura_galpon(datos, graficos):
         ax.plot([x, x], [ancho / 4, ancho / 2], [alto+(peralte - alto)/2, alto], color='green', linewidth=1.5)
         ax.plot([x, x], [ancho / 2, ancho - ancho / 4], [alto, alto+(peralte - alto)/2], color='green', linewidth=1.5)
     
+    # Crear los elementos de la leyenda
+    pillar_line = plt.Line2D([0], [0], color='brown', lw=2)
+    costanera_line = plt.Line2D([0], [0], color='orange', lw=2)
+    viga_line = plt.Line2D([0], [0], color='blue', lw=1.5)
+    cercha_line = plt.Line2D([0], [0], color='green', lw=1.5)
+    
+    # Añadir la leyenda
+    ax.legend([pillar_line, costanera_line, viga_line, cercha_line],
+              ['Pilares', 'Costaneras', 'Vigas', 'Cerchas'], loc='upper left')
+
     # Configurar los límites del gráfico
     ax.set_xlabel('Largo (m)')
     ax.set_ylabel('Ancho (m)')
@@ -55,4 +64,4 @@ def graficar_estructura_galpon(datos, graficos):
     ax.set_ylim([-2, ancho+2])
     ax.set_zlim([0, peralte])
 
-    plt.show(block = False)
+    plt.show(block=False)
