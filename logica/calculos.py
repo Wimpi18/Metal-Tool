@@ -1,4 +1,4 @@
-from math import sqrt
+from math import sqrt, ceil
 from pulp import LpProblem, LpMinimize, LpVariable, lpSum, value
 from itertools import combinations_with_replacement
 import matplotlib.pyplot as plt
@@ -48,7 +48,7 @@ def calcular_resultados(datos):
 
     return resultados, {"num_pilares": num_pilares, "num_costaneras": num_costaneras}
 
-def calcular_costos_totales(resultados, costos, longitud_base):
+def calcular_costos_totales(resultados, costos, longitudesBase):
     costos_totales = []
     costoPerfilHeb400 = float(resultados[0].split(':')[1].strip()) * float(resultados[1].split(':')[1].strip().split(' ')[0]) * costos['mh4']
     costoPerfilC = float(resultados[3].split(':')[1].strip()) * float(resultados[4].split(':')[1].strip().split(' ')[0]) * costos['mc']
@@ -59,7 +59,7 @@ def calcular_costos_totales(resultados, costos, longitud_base):
     costoPendolones = float(resultados[13].split(':')[1].strip()) * float(resultados[14].split(':')[1].strip().split(' ')[0]) * costos['mh3']
     costoMontantes = float(resultados[16].split(':')[1].strip()) * float(resultados[17].split(':')[1].strip().split(' ')[0]) * costos['mh3']
     costoTornapuntas = float(resultados[19].split(':')[1].strip()) * float(resultados[20].split(':')[1].strip().split(' ')[0]) * costos['mh3']
-    costoPerfilHeb300 = costoVigas + costoTirantes + costoPendolones + costoMontantes + costoTornapuntas
+    # costoPerfilHeb300 = costoVigas + costoTirantes + costoPendolones + costoMontantes + costoTornapuntas
     
     cantidades = [float(resultados[7].split(':')[1].strip()), float(resultados[10].split(':')[1].strip()),
                   float(resultados[13].split(':')[1].strip()), float(resultados[16].split(':')[1].strip()),
@@ -69,24 +69,24 @@ def calcular_costos_totales(resultados, costos, longitud_base):
                   float(resultados[20].split(':')[1].strip().split(' ')[0])]  # Longitudes requeridas en metros
     costo_por_metro = costos['mh3'] # Costo por metro de la barra
 
-    barras_usadas, combinaciones, costo_total, desperdicio_total = simulacion_de_cortes(cantidades, longitudes, longitud_base, costo_por_metro)
+    x, costoPerfilHeb300 = simulacion_de_cortes(cantidades, longitudes, longitudesBase, costo_por_metro)
     
     costos_totales.append(" ")
     costos_totales.append(f"    Costo total pilares con perfil HEB400: {costoPerfilHeb400:.2f} $")
     costos_totales.append(f"    Costo total costaneras con perfil C: {costoPerfilC:.2f} $")
     costos_totales.append(f"    Costo total pernos de anclaje: {costoPernosAnclaje:.2f} $")
-    costos_totales.append(f"    Costo total cerchas con perfil HEB300: {costo_total:.2f} $")
-    costos_totales.append(f"Costo galpón: {costoPerfilHeb400 + costoPerfilC + costoPernosAnclaje + costo_total:.2f} $")
+    costos_totales.append(f"    Costo total cerchas con perfil HEB300: {costoPerfilHeb300:.2f} $")
+    costos_totales.append(f"Costo galpón: {costoPerfilHeb400 + costoPerfilC + costoPernosAnclaje + costoPerfilHeb300:.2f} $")
     
-    costos_totales.append(" ")
-    costos_totales.append("Simulación de cortes:")
-    costos_totales.append(f"    Cantidad de barras utilizadas: {barras_usadas}")
-    costos_totales.append("")
-    costos_totales.append(f"    Combinaciones de cortes:")
-    for patron, cantidad in combinaciones.items():
-        costos_totales.append(f"            Patrón {patron}: {cantidad} barras")
-    costos_totales.append("")
-    costos_totales.append(f"    Desperdicio perfil HEB300: {desperdicio_total:.2f} m")
+    # costos_totales.append(" ")
+    # costos_totales.append("Simulación de cortes:")
+    # costos_totales.append(f"    Cantidad de barras utilizadas: {barras_usadas}")
+    # costos_totales.append("")
+    # costos_totales.append(f"    Combinaciones de cortes:")
+    # for patron, cantidad in combinaciones.items():
+    #     costos_totales.append(f"            Patrón {patron}: {cantidad} barras")
+    # costos_totales.append("")
+    # costos_totales.append(f"    Desperdicio perfil HEB300: {desperdicio_total:.2f} m")
     
     return costos_totales
 
@@ -104,16 +104,22 @@ def generar_patrones(longitudes, longitud_base):
                 patrones.append(comb)
     return patrones
 
-def simulacion_de_cortes(cantidades, longitudes, longitud_base, costo_por_metro):
+def simulacion_de_cortes(cantidades, longitudes, longitudesBase, costo_por_metro):
     """
     Simula los cortes necesarios para cumplir con las órdenes de perfiles HEB300, minimizando el desperdicio.
     """
 
-    stocks = {
-    "A": {"length": 5, "cost": 6},
-    "B": {"length": 10, "cost": 9},
-    "C": {"length": 15, "cost": 10},
-    }
+    stocks = {}
+
+    for i in range(0, len(longitudesBase)):
+        stocks["Longitud " + str(i + 1) + " de " + str(longitudesBase[i]) + "m"] = {"length": longitudesBase[i], "cost": costo_por_metro * longitudesBase[i]}
+
+
+    print("longitudes:")
+    print(longitudes)
+
+    print("cantidades:")
+    print(cantidades)
 
     finish = {
         "Viga": {"length": longitudes[0], "demand": cantidades[0]},
@@ -124,7 +130,6 @@ def simulacion_de_cortes(cantidades, longitudes, longitud_base, costo_por_metro)
     }
 
     patterns = make_patterns(stocks, finish)
-    print(patterns)
 
     ax = plot_patterns(stocks, finish, patterns)
 
@@ -133,41 +138,7 @@ def simulacion_de_cortes(cantidades, longitudes, longitud_base, costo_por_metro)
     ax = plot_nonzero_patterns(stocks, finish, patterns, x, cost)
 
 
-    # Generar todos los patrones viables de cortes
-    patrones = generar_patrones(longitudes, longitud_base)
-    num_patrones = len(patrones)
-
-    # Crear el problema de optimización
-    prob = LpProblem("Cutting Stock Problem", LpMinimize)
-
-    # Variables de decisión: cuántas barras usan cada patrón
-    x = LpVariable.dicts("Patron", list(range(num_patrones)), cat="Integer", lowBound=0)
-
-    # Función objetivo: minimizar el costo total
-    prob += lpSum(x[p] for p in range(num_patrones)) * costo_por_metro * longitud_base, "CostoTotal"
-
-    # Restricción: satisfacer la demanda de cada longitud
-    for i, longitud in enumerate(longitudes):
-        prob += (
-            lpSum(x[p] * patrones[p].count(longitud) for p in range(num_patrones)) >= cantidades[i],
-            f"Demanda_{longitud}",
-        )
-
-    # Resolver el problema
-    prob.solve()
-
-    # Resultados
-    barras_usadas = sum(value(x[p]) for p in range(num_patrones))
-    combinaciones_cortes = {tuple(patrones[p]): int(value(x[p])) for p in range(num_patrones) if value(x[p]) > 0}
-    costo_total = value(prob.objective)
-
-    # Cálculo del desperdicio total
-    desperdicio_total = sum(
-        (longitud_base - sum(patron)) * cantidad
-        for patron, cantidad in combinaciones_cortes.items()
-    )
-
-    return barras_usadas, combinaciones_cortes, costo_total, desperdicio_total
+    return x, cost
 
 
 
@@ -310,7 +281,7 @@ def plot_nonzero_patterns(stocks, finish, patterns, x, cost):
     k = [j for j, _ in enumerate(x) if _ > 0]
     ax = plot_patterns(stocks, finish, [patterns[j] for j in k])
     ticks = [
-        f"{x[k]} x {pattern['stock']}" for k, pattern in enumerate(patterns) if x[k] > 0
+        f"{ceil(x[k])} x {pattern['stock']}" for k, pattern in enumerate(patterns) if ceil(x[k]) > 0
     ]
     ax.set_yticks(range(0, -len(k), -1), ticks, fontsize=8)
     ax.set_title(f"Cost = {round(cost,2)}", fontsize=10)

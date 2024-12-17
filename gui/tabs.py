@@ -40,28 +40,43 @@ def configurar_tab_ingreso(tab, notebook, tab_resultados, costos_actuales):
                 "ancho": float(entry_ancho.get()),
                 "largo": float(entry_largo.get()),
                 "peralte": float(entry_peralte.get()),
-                "longitudBase": float(entry_longitudBase.get())
+                "longitudesBase": [float(entry.get()) for entry in longitud_entries if entry.get()]
             }
 
             # Validar datos
             validar_datos(datos)
 
+            print(datos)
+
             # Calcular resultados
             resultados, graficos = calcular_resultados(datos)
 
             # Calcular costos totales
-            costos = calcular_costos_totales(resultados, costos_actuales, datos["longitudBase"])
+            costos = calcular_costos_totales(resultados, costos_actuales, datos["longitudesBase"])
             resultados.extend(costos)
 
             # Graficar estructura
             graficar_estructura_galpon(datos, graficos)
 
             # Mostrar resultados
-            mostrar_resultados(tab_resultados, resultados, datos["longitudBase"])
+            mostrar_resultados(tab_resultados, resultados, datos["longitudesBase"])
 
             notebook.select(2)
         except ValueError as e:
             messagebox.showerror("Error", f"Entrada inválida: {e}")
+
+    def agregar_campo_longitud():
+        """Agrega un nuevo campo de entrada para longitud base."""
+        new_entry = tk.Entry(tab)
+        new_entry.grid(row=longitud_base_row_start + len(longitud_entries), column=1, padx=10, pady=5)
+        longitud_entries.append(new_entry)
+        tk.Label(tab, text=f"Longitud base {len(longitud_entries)} (m):").grid(
+            row=longitud_base_row_start + len(longitud_entries) - 1, column=0, padx=10, pady=5, sticky="e"
+        )
+
+    # Campos iniciales
+    longitud_entries = []
+    longitud_base_row_start = 5  # Donde empiezan los campos dinámicos
 
     tk.Label(tab, text="Alto (m):").grid(row=0, column=0, padx=10, pady=10, sticky="e")
     entry_alto = tk.Entry(tab)
@@ -78,13 +93,17 @@ def configurar_tab_ingreso(tab, notebook, tab_resultados, costos_actuales):
     tk.Label(tab, text="Peralte (m):").grid(row=3, column=0, padx=10, pady=10, sticky="e")
     entry_peralte = tk.Entry(tab)
     entry_peralte.grid(row=3, column=1, padx=10, pady=10)
-    
-    tk.Label(tab, text="Longitud base de perfil HEB300 (m):").grid(row=4, column=0, padx=10, pady=10, sticky="e")
-    entry_longitudBase = tk.Entry(tab)
-    entry_longitudBase.grid(row=4, column=1, padx=10, pady=10)
 
+    # Botón para agregar más longitudes base
+    btn_agregar = tk.Button(tab, text="Agregar longitud base", command=agregar_campo_longitud)
+    btn_agregar.grid(row=4, column=0, columnspan=2, pady=10)
+
+    # Botón de envío
     btn_enviar = tk.Button(tab, text="Enviar", command=enviar_datos)
-    btn_enviar.grid(row=5, column=0, columnspan=2, pady=20)
+    btn_enviar.grid(row=longitud_base_row_start + 10, column=0, columnspan=2, pady=20)
+
+
+    
 
 def configurar_tab_costos(tab, costos_actuales):
     entradas_costos = {}
@@ -176,50 +195,8 @@ def mostrar_resultados(tab, resultados, longitudBase):
     ]
     for dato in costos_datos:
         tree_costos.insert("", "end", values=dato)
-    # Tabla para simulación de cortes
-    ttk.Label(table_frame, text="Simulación de cortes", font=("Arial", 12, "bold")).pack(pady=(10, 5))
-    tree_cortes = ttk.Treeview(table_frame, columns=("Descripción", "Cantidad"), show="headings")
-    tree_cortes.pack(fill="x", padx=10, pady=5)
-    cortes_datos = [
-        ("Barras utilizadas", extraerDato(resultados[29]))
-    ]
-    for i in range(32, len(resultados)):
-        if i == len(resultados) - 2:
-            continue
-        cortes_datos.append((extraerLlave(resultados[i]), extraerDato(resultados[i])))
-
-    for dato in cortes_datos:
-        tree_cortes.insert("", "end", values=dato)
-    # Gráfico de simulación de cortes
-    ttk.Label(table_frame, text="Visualización de Simulación de Cortes", font=("Arial", 12, "bold")).pack(pady=(10, 5))
-    marco_grafico = tk.Frame(table_frame)
-    marco_grafico.pack(pady=10)
-    # Datos del gráfico
-    combinaciones = extraerCombinaciones(resultados)
-    longitud_base = longitudBase  # Longitud base de la barra
-    # Crear la figura
-    fig = Figure(figsize=(8, len(combinaciones) * 2))
-    ax = fig.add_subplot(111)
-    y_labels = []
-    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd']
-    for idx, combinacion in enumerate(reversed(combinaciones)):
-        patron = combinacion["patrón"]
-        barras = combinacion["barras"]
-        y_labels.append(f"Patrón {idx + 1}: {barras} barras")
-        start = 0
-        for segment_idx, longitud in enumerate(patron):
-            ax.barh(idx, longitud, left=start, color=colors[segment_idx % len(colors)], edgecolor='black')
-            start += longitud
-        desperdicio = longitud_base - sum(patron)
-        ax.barh(idx, desperdicio, left=start, color='gray', edgecolor='black')
-    ax.set_yticks(range(len(combinaciones)))
-    ax.set_yticklabels(y_labels)
-    ax.set_xlabel("Longitud (m)")
-    ax.set_title("Simulación de Cortes")
-    # Incrustar la gráfica en Tkinter
-    canvas_grafico = FigureCanvasTkAgg(fig, master=marco_grafico)
-    canvas_grafico.draw()
-    canvas_grafico.get_tk_widget().pack()
+    
+    
 
 def extraerLlave(resultado:str):
     return resultado.split(':')[0].strip()
