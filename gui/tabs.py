@@ -46,8 +46,6 @@ def configurar_tab_ingreso(tab, notebook, tab_resultados, costos_actuales):
             # Validar datos
             validar_datos(datos)
 
-            print(datos)
-
             # Calcular resultados
             resultados, graficos = calcular_resultados(datos)
 
