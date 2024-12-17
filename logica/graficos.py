@@ -8,7 +8,7 @@ def graficar_estructura_galpon(datos, graficos):
     ax = fig.add_subplot(111, projection='3d')
 
     # Parámetros del diseño
-    distancia_pilares = (largo) / (ceil(2 * largo / 3) - 1)
+    distancia_pilares = (largo) / (ceil(1 * largo / 5) - 1)
     num_pilares = num_vigas = (ceil(largo / distancia_pilares) + 1)
     num_costaneras = round(((5*sqrt(26))/39) * sqrt((peralte-alto)**2 + (ancho/2)**2))
     
